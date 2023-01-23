@@ -5,45 +5,24 @@
 #define ADR_PT2322 0b01000100 // 68
 #define ADR_PT2323 0b01001010 // 74
 
-/* --FUTURE IMPLEMENTATIONS--
-// arduino digital INPUTS pins
-#define BTN_INIT        22
-#define BTN_MENU_SEL    23
-#define BTN_UP          24
-#define BTN_DOWN        25
-#define BTN_MUTE_BOARD  26
-#define BTN_MUTE        27
-#define BTN_INPUT_SEL   28
-#define BTN_SPEAKER_SEL 29
-#define BTN_MIX_SEL     30
-*/
-
-// arduino digital OUTPUTS pins
-#define PIN_MUTE_BOARD 31
-
-// keypad constants & pins
-// #define QUANTITY_OF_ROWS    4
-// #define QUANTITY_OF_COLUMNS 4
-// const char KEYMAP[QUANTITY_OF_ROWS][QUANTITY_OF_COLUMNS] = {
-//   {'1', '2', '3', 'A'},
-//   {'4', '5', '6', 'B'},
-//   {'7', '8', '9', 'C'},
-//   {'*', '0', '#', 'D'}
-// };
-// const byte ROWS_PINS[QUANTITY_OF_ROWS] = {46, 47, 48, 49};
-// const byte COLUMNS_PINS[QUANTITY_OF_COLUMNS] = {50, 51, 52, 53};
+// menu buttons
+#define MENU_BTN  12
+#define DOWN_BTN  8
+#define UP_BTN    4
+#define INPUT_BTN 11
+#define MUTE_BTN  7
+#define MIX_BTN   3
 
 // global variables
 byte dataAux;
-char key;
 int menu;
+int menuResetCounter;
 int function;
 int input;
 int speakerMode;
 int channelMute;
 int surround;
 int mix;
-int muteBoard;
 int mute;
 int volume;
 int volume10;
@@ -58,9 +37,6 @@ int CN;
 int SL;
 int SR;
 
-// keypad initialization
-// Keypad keypad = Keypad(makeKeymap(KEYMAP), ROWS_PINS, COLUMNS_PINS, QUANTITY_OF_ROWS, QUANTITY_OF_COLUMNS);
-
 void setup() {
   Wire.begin(9600);
   Serial.begin(9600);
@@ -68,65 +44,53 @@ void setup() {
   // built-in LED
   pinMode(LED_BUILTIN, OUTPUT);
 
-  /* --FUTURE IMPLEMENTATIONS--
-  // digital inputs
-  pinMode(BTN_INIT, INPUT);
-  pinMode(BTN_MENU_SEL, INPUT);
-  pinMode(BTN_UP, INPUT);
-  pinMode(BTN_DOWN, INPUT);
-  pinMode(BTN_MUTE, INPUT);
-  pinMode(BTN_INPUT_SEL, INPUT);
-  pinMode(BTN_SPEAKER_SEL, INPUT);
-  pinMode(BTN_MIX_SEL, INPUT);
-  */
+  // menu buttons
+  pinMode(MENU_BTN, INPUT);
+  pinMode(DOWN_BTN, INPUT);
+  pinMode(UP_BTN, INPUT);
 
-  // digital outputs
-  pinMode(PIN_MUTE_BOARD, OUTPUT);
+  delay(2000);
+  manualInitialization();
 }
 
 void loop() {
   delay(100);
   digitalWrite(LED_BUILTIN, LOW);
 
-  /*
   // KEYPAD input control
-  key = keypad.getKey();
-  if (key) {
+  if (digitalRead(MENU_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
-    switch (key) {
-      case '*':
-        manualInitialization();
-        showValues();
-      case '1':
-        inputSelection();
-      break;
-      case '2':
-        speakerModeSelection();
-      break;
-      case '3':
-        mixSelection();
-      break;
-      case '5':
-        muteBoardSelection();
-      break;
-      case '4':
-        volMute();
-      break;
-      case '0':
-        showValues();
-      break;
-      case 'D':
-        menuSelection();
-      break;
-      case 'A':
-        menuUp();
-      break;
-      case 'B':
-        menuDown();
-      break;
-    }
+    menuSelection();
+    menuResetCounter = 0;
   }
-  */
+  if (digitalRead(DOWN_BTN) == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    menuDown();
+    menuResetCounter = 0;
+  }
+  if (digitalRead(UP_BTN) == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    menuUp();
+    menuResetCounter = 0;
+  }
+  if (digitalRead(INPUT_BTN) == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    inputSelection();
+  }
+  if (digitalRead(MUTE_BTN) == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    volMute();
+  }
+  if (digitalRead(MIX_BTN) == HIGH) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    mixSelection();
+  }
+  if (menu != 0)
+    menuResetCounter++;
+  if (menuResetCounter > 50) {
+    menuReset();
+    menuResetCounter = 0;
+  }
 
   // SERIAL input master control
   if (Serial.available()) {
@@ -134,7 +98,6 @@ void loop() {
     switch (Serial.read()) {
       case 48:               // '0' ASCII | initialize()
         manualInitialization();
-        showValues();
       break;
       case 99:               // 'c' ASCII | inputSelection()
         inputSelection();
@@ -144,9 +107,6 @@ void loop() {
       break;
       case 98:               // 'b' ASCII | mixSelection()
         mixSelection();
-      break;
-      case 118:              // 'v' ASCII | muteBoard()
-        muteBoardSelection();
       break;
       case 109:              // 'm' ASCII | volMute()
         volMute();
@@ -221,7 +181,7 @@ void loop() {
 // ================ LOGIC METHODS ================ //
 
 void manualInitialization() {
-  
+
   // desactivate PT2322
   Wire.beginTransmission(ADR_PT2322);
   Wire.write(0b11111111);
@@ -231,27 +191,26 @@ void manualInitialization() {
   Wire.write(0b11000111);
   Wire.endTransmission();
 
-  menu = 0;        // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
-  input = 4;       // 0->aux_1 | 1->aux_2 | 2->XX | 3->XX | 4->5.1
-  volume = 50;     // 29 - 79
-  muteBoard = 0;   // 0->unmuted | 1->muted
-  mute = 0;        // 0->unmuted | 1->muted
-  mix = 1;         // 0->0dB | 1->+6dB
-  treble = 7;      // 0 - 15
-  mid = 7;         // 0 - 15
-  bass = 7;        // 0 - 15
-  sub = 7;         // 0 - 15
-  FL = 7;          // 0 - 15
-  FR = 7;          // 0 - 15
-  CN = 7;          // 0 - 15
-  SL = 7;          // 0 - 15
-  SR = 7;          // 0 - 15
-  speakerMode = 0; // 0->5.1 | 1->2.1
+  menu = 0;             // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
+  menuResetCounter = 0; // 0 - 50
+  input = 4;            // 0->aux_1 | 1->aux_2 | 2->XX | 3->XX | 4->5.1
+  volume = 50;          // 29 - 79
+  mute = 0;             // 0->unmuted | 1->muted
+  mix = 1;              // 0->0dB | 1->+6dB
+  treble = 7;           // 0 - 15
+  mid = 7;              // 0 - 15
+  bass = 7;             // 0 - 15
+  sub = 7;              // 0 - 15
+  FL = 7;               // 0 - 15
+  FR = 7;               // 0 - 15
+  CN = 7;               // 0 - 15
+  SL = 7;               // 0 - 15
+  SR = 7;               // 0 - 15
+  speakerMode = 0;      // 0->5.1 | 1->2.1
 
   setInput();
   setSpeakerMode();
   setMix();
-  setMuteBoard();
   setMute();
   setVolume();
   setBass();
@@ -263,7 +222,7 @@ void manualInitialization() {
   setSL();
   setSR();
   functionPT2322(0, 1, 0);
-    
+  
   // DEBUG
   Serial.println("<< manual initialization >>");
 }
@@ -297,15 +256,6 @@ void mixSelection() {
   // DEBUG
   Serial.print("<< mix: ");
   Serial.print(mix);
-  Serial.println(" >>");
-}
-
-void muteBoardSelection() {
-  muteBoard = !muteBoard;
-  setMuteBoard();
-
-  Serial.print("<< mute board: ");
-  Serial.print(muteBoard);
   Serial.println(" >>");
 }
 
@@ -556,6 +506,8 @@ void showValues() {
   Serial.println(surround);
 }
 
+// ================ MENU METHODS ================ //
+
 void menuSelection() {
   menu++;
   if (menu > 9)
@@ -563,6 +515,15 @@ void menuSelection() {
 
   // DEBUG
   Serial.print("<< menu: ");
+  Serial.print(menu);
+  Serial.println(" >>");
+}
+
+void menuReset() {
+  menu = 0;
+
+  // DEBUG
+  Serial.print("<< menu (reset): ");
   Serial.print(menu);
   Serial.println(" >>");
 }
@@ -637,7 +598,7 @@ void menuDown() {
   }
 }
 
-// ================ COMMUNICATIONS ================ //
+// ================ COMMUNICATION METHODS ================ //
 
 void setInput() {
   if (input > 4)
@@ -702,19 +663,6 @@ void setMix() {
       break;
     case 1:      // +6dB setup
       sendToPT2323(0b10010001);
-      break;
-  }
-}
-
-void setMuteBoard() {
-  if (mute > 1)
-    muteBoard = 0;
-  switch (muteBoard) {
-    case 0:            // board unmuted
-      digitalWrite(PIN_MUTE_BOARD, LOW);
-      break;
-    case 1:            // board muted
-      digitalWrite(PIN_MUTE_BOARD, HIGH);
       break;
   }
 }
