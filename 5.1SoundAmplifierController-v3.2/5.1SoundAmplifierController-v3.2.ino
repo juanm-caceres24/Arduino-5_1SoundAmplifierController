@@ -1,5 +1,9 @@
 #include <Wire.h>
-#include <Keypad.h>
+#include <LCD.h>
+#include <LiquidCrystal_I2C.h>
+
+// LCD object
+LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7); // address, E, RW, RS, D4, D5, D6, D7
 
 // I2C address of sound amplifier chips
 #define ADR_PT2322 0b01000100 // 68
@@ -17,6 +21,7 @@
 byte dataAux;
 int menu;
 int menuResetCounter;
+int displayOnCounter;
 int function;
 int input;
 int speakerMode;
@@ -44,12 +49,17 @@ void setup() {
   // built-in LED
   pinMode(LED_BUILTIN, OUTPUT);
 
+  // LCD initialization
+  lcd.begin(20, 4);
+  lcd.setBacklightPin(3, POSITIVE);
+  lcd.setBacklight(HIGH); // backlinght ON
+  
   // menu buttons
   pinMode(MENU_BTN, INPUT);
   pinMode(DOWN_BTN, INPUT);
   pinMode(UP_BTN, INPUT);
 
-  delay(2000);
+  delay(1000);
   manualInitialization();
 }
 
@@ -62,34 +72,57 @@ void loop() {
     digitalWrite(LED_BUILTIN, HIGH);
     menuSelection();
     menuResetCounter = 0;
+    displayOnCounter = 0;
   }
   if (digitalRead(DOWN_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuDown();
     menuResetCounter = 0;
+    displayOnCounter = 0;
   }
   if (digitalRead(UP_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuUp();
     menuResetCounter = 0;
+    displayOnCounter = 0;
   }
   if (digitalRead(INPUT_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     inputSelection();
+    displayOnCounter = 0;
   }
   if (digitalRead(MUTE_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     volMute();
+    displayOnCounter = 0;
   }
   if (digitalRead(MIX_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     mixSelection();
+    displayOnCounter = 0;
   }
+  
   if (menu != 0)
     menuResetCounter++;
   if (menuResetCounter > 50) {
     menuReset();
     menuResetCounter = 0;
+  }
+  
+  if (displayOnCounter >= 0 && displayOnCounter < 50) {
+    lcd.setBacklight(HIGH);
+    displayOnCounter++;
+  }
+  else {
+    lcd.setCursor(0, 0);
+    lcd.print("                    ");
+    lcd.setCursor(0, 1);
+    lcd.print("                    ");
+    lcd.setCursor(0, 2);
+    lcd.print("                    ");
+    lcd.setCursor(0, 3);
+    lcd.print("                    ");
+    lcd.setBacklight(LOW);
   }
 
   // SERIAL input master control
@@ -98,83 +131,176 @@ void loop() {
     switch (Serial.read()) {
       case 48:               // '0' ASCII | initialize()
         manualInitialization();
-      break;
+        break;
       case 99:               // 'c' ASCII | inputSelection()
         inputSelection();
-      break;
+        break;
       case 110:              // 'n' ASCII | speakerModeSelection()
         speakerModeSelection();
-      break;
+        break;
       case 98:               // 'b' ASCII | mixSelection()
         mixSelection();
-      break;
+        break;
       case 109:              // 'm' ASCII | volMute()
         volMute();
-      break;
+        break;
       case 43:               // '+' ASCII | volUp()
         volUp();
-      break;
+        break;
       case 45:               // '-' ASCII | volDown()
         volDown();
-      break;
+        break;
       case 117:              // 'u' ASCII | subUp()
         bassUp();
-      break;
+        break;
       case 106:              // 'j' ASCII | subDown()
         bassDown();
-      break;
+        break;
       case 105:              // 'i' ASCII | midUp()
         midUp();
-      break;
+        break;
       case 107:              // 'k' ASCII | midDown()
         midDown();
-      break;
+        break;
       case 111:              // 'o' ASCII | trebleUp()
         trebleUp();
-      break;
+        break;
       case 108:              // 'l' ASCII | trebleDown()
         trebleDown();
-      break;
+        break;
       case 113:              // 'q' ASCII | subUp()
         subUp();
-      break;
+        break;
       case 97:               // 'a' ASCII | subDown()
         subDown();
-      break;
+        break;
       case 119:              // 'w' ASCII | subUp()
         FLUp();
-      break;
+        break;
       case 115:              // 's' ASCII | subDown()
         FLDown();
-      break;
+        break;
       case 101:              // 'e' ASCII | subUp()
         FRUp();
-      break;
+        break;
       case 100:              // 'd' ASCII | subDown()
         FRDown();
-      break;
+        break;
       case 114:              // 'r' ASCII | subUp()
         CNUp();
-      break;
+        break;
       case 102:              // 'f' ASCII | subDown()
         CNDown();
-      break;
+        break;
       case 116:              // 't' ASCII | subUp()
         SLUp();
-      break;
+        break;
       case 103:              // 'g' ASCII | subDown()
         SLDown();
-      break;
+        break;
       case 121:              // 'y' ASCII | subUp()
         SRUp();
-      break;
+        break;
       case 104:              // 'h' ASCII | subDown()
         SRDown();
-      break;
+        break;
       case 122:              // 'z' ASCII | showValues()
         showValues();
-      break;
+        break;
     }
+  }
+
+  // LCD data information
+  if (displayOnCounter >= 0 && displayOnCounter < 50) {
+    lcd.setCursor(0, 0);
+    switch (menu) {
+      case 0:
+        lcd.print("VOLUME:             ");
+        lcd.setCursor(8, 0);
+        lcd.print(volume);
+        break;
+      case 1:
+        lcd.print("TREBLE:             ");
+        lcd.setCursor(8, 0);
+        lcd.print(treble);
+        break;
+      case 2:
+        lcd.print("MID:                ");
+        lcd.setCursor(5, 0);
+        lcd.print(mid);
+        break;
+      case 3:
+        lcd.print("BASS:               ");
+        lcd.setCursor(6, 0);
+        lcd.print(bass);
+        break;
+      case 4:
+        lcd.print("SUBWOOFER:          ");
+        lcd.setCursor(11, 0);
+        lcd.print(sub);
+        break;
+      case 5:
+        lcd.print("FRONT LEFT:         ");
+        lcd.setCursor(12, 0);
+        lcd.print(FL);
+        break;
+      case 6:
+        lcd.print("FRONT RIGHT:        ");
+        lcd.setCursor(13, 0);
+        lcd.print(FR);
+        break;
+      case 7:
+        lcd.print("CENTER:             ");
+        lcd.setCursor(8, 0);
+        lcd.print(CN);
+        break;
+      case 8:
+        lcd.print("SURROUND LEFT:      ");
+        lcd.setCursor(15, 0);
+        lcd.print(SL);
+        break;
+      case 9:
+        lcd.print("SURROUND RIGHT:     ");
+        lcd.setCursor(16, 0);
+        lcd.print(SR);
+        break;
+    }
+    
+    lcd.setCursor(0, 1);
+    lcd.print("INPUT: ");
+    lcd.setCursor(7, 1);
+    switch (input) {
+      case 0:
+        lcd.print("AUXILIAR 1   ");
+        break;
+      case 1:
+        lcd.print("AUXILIAR 2   ");
+        break;
+      case 2:
+        lcd.print("AUXILIAR 3   ");
+        break;
+      case 3:
+        lcd.print("LR SURROUND  ");
+        break;
+      case 4:
+        lcd.print("5.1 SURROUND ");
+        break;
+    }
+    
+    lcd.setCursor(0, 2);
+    lcd.print("MUTE: ");
+    lcd.setCursor(6, 2);
+    if (mute == 1)
+      lcd.print("ON            ");
+    else
+      lcd.print("OFF           ");
+    
+    lcd.setCursor(0, 3);
+    lcd.print("MIX: ");
+    if (mix == 1)
+      lcd.print("ON           ");
+    else
+      lcd.print("OFF          ");
   }
 }
 
@@ -193,8 +319,9 @@ void manualInitialization() {
 
   menu = 0;             // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
   menuResetCounter = 0; // 0 - 50
-  input = 4;            // 0->aux_1 | 1->aux_2 | 2->XX | 3->XX | 4->5.1
-  volume = 50;          // 29 - 79
+  displayOnCounter = 0; // 0 - 50
+  input = 4;            // 0->aux_1 | 1->aux_2 | 2->aux_3 | 3->LR_surround | 4->5.1_surround
+  volume = 30;          // 0 - 79
   mute = 0;             // 0->unmuted | 1->muted
   mix = 1;              // 0->0dB | 1->+6dB
   treble = 7;           // 0 - 15
@@ -224,7 +351,7 @@ void manualInitialization() {
   functionPT2322(0, 1, 0);
   
   // DEBUG
-  Serial.println("<< manual initialization >>");
+  //Serial.println("<< manual initialization >>");
 }
 
 void inputSelection() {
@@ -234,9 +361,11 @@ void inputSelection() {
   setInput();
   
   // DEBUG
+  /*
   Serial.print("<< input selection: ");
   Serial.print(input);
   Serial.println(" >>");
+  */
 }
 
 void speakerModeSelection() {
@@ -244,9 +373,11 @@ void speakerModeSelection() {
   setSpeakerMode();
 
   // DEBUG
+  /*
   Serial.print("<< speaker mode: ");
   Serial.print(speakerMode);
   Serial.println(" >>");
+  */
 }
 
 void mixSelection() {
@@ -254,9 +385,11 @@ void mixSelection() {
   setMix();
 
   // DEBUG
+  /*
   Serial.print("<< mix: ");
   Serial.print(mix);
   Serial.println(" >>");
+  */
 }
 
 void volMute() {
@@ -264,9 +397,11 @@ void volMute() {
   setMute();
   
   // DEBUG
+  /*
   Serial.print("<< mute: ");
   Serial.print(mute);
   Serial.println(" >>");
+  */
 }
 
 void volUp() {
@@ -274,9 +409,11 @@ void volUp() {
   setVolume();
   
   // DEBUG
+  /*
   Serial.print("<< volume up | volume: ");
   Serial.print(volume);
   Serial.println(" >>");
+  */
 }
 
 void volDown() {
@@ -284,9 +421,11 @@ void volDown() {
   setVolume();
   
   // DEBUG
+  /*
   Serial.print("<< volume down | volume: ");
   Serial.print(volume);
   Serial.println(" >>");
+  */
 }
 
 void bassUp() {
@@ -294,9 +433,11 @@ void bassUp() {
   setBass();
 
   // DEBUG
+  /*
   Serial.print("<< bass up | volume: ");
   Serial.print(bass);
   Serial.println(" >>");
+  */
 }
 
 void bassDown() {
@@ -304,9 +445,11 @@ void bassDown() {
   setBass();
 
   // DEBUG
+  /*
   Serial.print("<< bass down | volume: ");
   Serial.print(bass);
   Serial.println(" >>");
+  */
 }
 
 void midUp() {
@@ -314,9 +457,11 @@ void midUp() {
   setMid();
 
   // DEBUG
+  /*
   Serial.print("<< mid up | volume: ");
   Serial.print(mid);
   Serial.println(" >>");
+  */
 }
 
 void midDown() {
@@ -324,9 +469,11 @@ void midDown() {
   setMid();
 
   // DEBUG
+  /*
   Serial.print("<< mid down | volume: ");
   Serial.print(mid);
   Serial.println(" >>");
+  */
 }
 
 void trebleUp() {
@@ -334,9 +481,11 @@ void trebleUp() {
   setTreble();
 
   // DEBUG
+  /*
   Serial.print("<< treble up | volume: ");
   Serial.print(treble);
   Serial.println(" >>");
+  */
 }
 
 void trebleDown() {
@@ -344,9 +493,11 @@ void trebleDown() {
   setTreble();
 
   // DEBUG
+  /*
   Serial.print("<< treble down | volume: ");
   Serial.print(treble);
   Serial.println(" >>");
+  */
 }
 
 void subUp() {
@@ -354,9 +505,11 @@ void subUp() {
   setSub();
 
   // DEBUG
+  /*
   Serial.print("<< sub up | volume: ");
   Serial.print(sub);
   Serial.println(" >>");
+  */
 }
 
 void subDown() {
@@ -364,9 +517,11 @@ void subDown() {
   setSub();
 
   // DEBUG
+  /*
   Serial.print("<< sub down | volume: ");
   Serial.print(sub);
   Serial.println(" >>");
+  */
 }
 
 void FLUp() {
@@ -374,9 +529,11 @@ void FLUp() {
   setFL();
 
   // DEBUG
+  /*
   Serial.print("<< FL up | volume: ");
   Serial.print(FL);
   Serial.println(" >>");
+  */
 }
 
 void FLDown() {
@@ -384,9 +541,11 @@ void FLDown() {
   setFL();
 
   // DEBUG
+  /*
   Serial.print("<< FL down | volume: ");
   Serial.print(FL);
   Serial.println(" >>");
+  */
 }
 
 void FRUp() {
@@ -394,9 +553,11 @@ void FRUp() {
   setFR();
 
   // DEBUG
+  /*
   Serial.print("<< FR up | volume: ");
   Serial.print(FR);
   Serial.println(" >>");
+  */
 }
 
 void FRDown() {
@@ -404,9 +565,11 @@ void FRDown() {
   setFR();
 
   // DEBUG
+  /*
   Serial.print("<< FR down | volume: ");
   Serial.print(FR);
   Serial.println(" >>");
+  */
 }
 
 void CNUp() {
@@ -414,9 +577,11 @@ void CNUp() {
   setCN();
 
   // DEBUG
+  /*
   Serial.print("<< CN up | volume: ");
   Serial.print(CN);
   Serial.println(" >>");
+  */
 }
 
 void CNDown() {
@@ -424,9 +589,11 @@ void CNDown() {
   setCN();
 
   // DEBUG
+  /*
   Serial.print("<< CN down | volume: ");
   Serial.print(CN);
   Serial.println(" >>");
+  */
 }
 
 void SLUp() {
@@ -434,9 +601,11 @@ void SLUp() {
   setSL();
 
   // DEBUG
+  /*
   Serial.print("<< SL up | volume: ");
   Serial.print(SL);
   Serial.println(" >>");
+  */
 }
 
 void SLDown() {
@@ -444,9 +613,11 @@ void SLDown() {
   setSL();
 
   // DEBUG
+  /*
   Serial.print("<< SL down | volume: ");
   Serial.print(SL);
   Serial.println(" >>");
+  */
 }
 
 void SRUp() {
@@ -454,9 +625,11 @@ void SRUp() {
   setSR();
 
   // DEBUG
+  /*
   Serial.print("<< SR up | volume: ");
   Serial.print(SR);
   Serial.println(" >>");
+  */
 }
 
 void SRDown() {
@@ -464,9 +637,11 @@ void SRDown() {
   setSR();
 
   // DEBUG
+  /*
   Serial.print("<< SR down | volume: ");
   Serial.print(SR);
   Serial.println(" >>");
+  */
 }
 
 void showValues() {
@@ -514,52 +689,56 @@ void menuSelection() {
     menu = 0;
 
   // DEBUG
+  /*
   Serial.print("<< menu: ");
   Serial.print(menu);
   Serial.println(" >>");
+  */
 }
 
 void menuReset() {
   menu = 0;
 
   // DEBUG
+  /*
   Serial.print("<< menu (reset): ");
   Serial.print(menu);
   Serial.println(" >>");
+  */
 }
 
 void menuUp() {
   switch (menu) {
     case 0:
       volUp();
-    break;
+      break;
     case 1:
       trebleUp();
-    break;
+      break;
     case 2:
       midUp();
-    break;
+      break;
     case 3:
       bassUp();
-    break;
+      break;
     case 4:
       subUp();
-    break;
+      break;
     case 5:
       FLUp();
-    break;
+      break;
     case 6:
       FRUp();
-    break;
+      break;
     case 7:
       CNUp();
-    break;
+      break;
     case 8:
       SLUp();
-    break;
+      break;
     case 9:
       SRUp();
-    break;
+      break;
   }
 }
 
@@ -567,34 +746,34 @@ void menuDown() {
   switch (menu) {
     case 0:
       volDown();
-    break;
+      break;
     case 1:
       trebleDown();
-    break;
+      break;
     case 2:
       midDown();
-    break;
+      break;
     case 3:
       bassDown();
-    break;
+      break;
     case 4:
       subDown();
-    break;
+      break;
     case 5:
       FLDown();
-    break;
+      break;
     case 6:
       FRDown();
-    break;
+      break;
     case 7:
       CNDown();
-    break;
+      break;
     case 8:
       SLDown();
-    break;
+      break;
     case 9:
       SRDown();
-    break;
+      break;
   }
 }
 
@@ -683,8 +862,8 @@ void setMute() {
 void setVolume() {
   if (volume > 79)
     volume = 79;
-  if (volume < 29)
-    volume = 29;
+  if (volume < 0)
+    volume = 0;
   int aux = 79 - volume;
   volume10 = aux/10;
   volume01 = aux - volume10*10;
