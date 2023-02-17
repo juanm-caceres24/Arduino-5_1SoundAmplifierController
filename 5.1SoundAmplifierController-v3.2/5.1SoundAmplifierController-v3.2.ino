@@ -48,18 +48,29 @@ void setup() {
 
   // built-in LED
   pinMode(LED_BUILTIN, OUTPUT);
-
-  // LCD initialization
-  lcd.begin(20, 4);
-  lcd.setBacklightPin(3, POSITIVE);
-  lcd.setBacklight(HIGH); // backlinght ON
   
   // menu buttons
   pinMode(MENU_BTN, INPUT);
   pinMode(DOWN_BTN, INPUT);
   pinMode(UP_BTN, INPUT);
 
-  delay(1000);
+  // LCD initialization
+  lcd.begin(20, 4);
+  lcd.setBacklightPin(3, POSITIVE);
+  lcd.setBacklight(HIGH); // backlinght ON
+  lcd.setCursor(0,0);
+  lcd.print("----INITIALIZING----");
+  for (int i = 0; i < 20; i++) {
+    lcd.setCursor(i, 1);
+    lcd.print(">");
+    lcd.setCursor(i, 2);
+    lcd.print(">");
+    lcd.setCursor(i, 3);
+    lcd.print(">");
+    delay(50);
+  }
+
+  // chips initialization
   manualInitialization();
 }
 
@@ -298,9 +309,9 @@ void loop() {
     lcd.setCursor(0, 3);
     lcd.print("MIX: ");
     if (mix == 1)
-      lcd.print("ON           ");
+      lcd.print("ON             ");
     else
-      lcd.print("OFF          ");
+      lcd.print("OFF            ");
   }
 }
 
