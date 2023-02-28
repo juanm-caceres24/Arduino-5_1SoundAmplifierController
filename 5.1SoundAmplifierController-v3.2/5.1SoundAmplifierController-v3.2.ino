@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <EEPROM.h>
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 
@@ -22,7 +23,6 @@ byte dataAux;
 int menu;
 int menuResetCounter;
 int displayOnCounter;
-int function;
 int input;
 int speakerMode;
 int channelMute;
@@ -328,23 +328,63 @@ void manualInitialization() {
   Wire.write(0b11000111);
   Wire.endTransmission();
 
-  menu = 0;             // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
-  menuResetCounter = 0; // 0 - 50
-  displayOnCounter = 0; // 0 - 50
-  input = 4;            // 0->aux_1 | 1->aux_2 | 2->aux_3 | 3->LR_surround | 4->5.1_surround
-  volume = 30;          // 0 - 79
-  mute = 0;             // 0->unmuted | 1->muted
-  mix = 1;              // 0->0dB | 1->+6dB
-  treble = 7;           // 0 - 15
-  mid = 7;              // 0 - 15
-  bass = 7;             // 0 - 15
-  sub = 7;              // 0 - 15
-  FL = 7;               // 0 - 15
-  FR = 7;               // 0 - 15
-  CN = 7;               // 0 - 15
-  SL = 7;               // 0 - 15
-  SR = 7;               // 0 - 15
-  speakerMode = 0;      // 0->5.1 | 1->2.1
+  menu = 0;                      // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
+  menuResetCounter = 0;          // 0 - 50
+  displayOnCounter = 0;          // 0 - 50
+  
+  input = EEPROM.read(0);
+  if (input < 0 || input > 4)
+    input = 3;                   // 0->aux_1 | 1->aux_2 | 2->aux_3 | 3->LR_surround | 4->5.1_surround
+    
+  volume = EEPROM.read(1);
+  if (volume < 0 || volume > 79)
+    volume = 30;                 // 0 - 79
+    
+  mute = EEPROM.read(2);
+  if (mute < 0 || mute > 1)
+    mute = 0;                    // 0->unmuted | 1->muted
+    
+  mix = EEPROM.read(3);
+  if (mix < 0 || mix > 1)
+    mix = 1;                     // 0->0dB | 1->+6dB
+    
+  treble = EEPROM.read(4);
+  if (treble < 0 || treble > 15) 
+    treble = 7;                  // 0 - 15
+
+  mid = EEPROM.read(5);
+  if (mid < 0 || mid > 15)
+    mid = 7;                     // 0 - 15
+
+  bass = EEPROM.read(6);
+  if (bass < 0 || bass > 15)
+    bass = 7;                    // 0 - 15
+    
+  sub = EEPROM.read(7);
+  if (sub < 0 || sub > 15)
+    sub = 7;                     // 0 - 15
+
+  FL = EEPROM.read(8);
+  if (FL < 0 || FL > 15)
+    FL = 7;                      // 0 - 15
+
+  FR = EEPROM.read(9);
+  if (FR < 0 || FR > 15)
+    FR = 7;                      // 0 - 15
+
+  CN = EEPROM.read(10);
+  if (CN < 0 || CN > 15)
+    CN = 7;                      // 0 - 15
+
+  SL = EEPROM.read(11);
+  if (SL < 0 || SL > 15)
+    SL = 7;                      // 0 - 15
+
+  SR = EEPROM.read(12);
+  if (SR < 0 || SR > 15)
+    SR = 7;                      // 0 - 15
+    
+  speakerMode = 0;               // 0->5.1 | 1->2.1
 
   setInput();
   setSpeakerMode();
@@ -810,6 +850,7 @@ void setInput() {
       sendToPT2323(0b11000111);
       break;
   }
+  EEPROM.update(0, input);
 }
 
 void setSurround() {
@@ -855,6 +896,7 @@ void setMix() {
       sendToPT2323(0b10010001);
       break;
   }
+  EEPROM.update(3, mix);
 }
 
 void setMute() {
@@ -868,6 +910,7 @@ void setMute() {
       sendToPT2323(0b11111111);
       break;
   }
+  EEPROM.update(2, mute);
 }
 
 void setVolume() {
@@ -882,6 +925,7 @@ void setVolume() {
   Wire.write(volume10 + 0b11100000);
   Wire.write(volume01 + 0b11010000);
   Wire.endTransmission();
+  EEPROM.update(1, volume);
 }
 
 void setBass() {
@@ -893,6 +937,7 @@ void setBass() {
   if(bass > 7)
     dataAux = 23 - bass;
   sendToPT2322(0b10010000 + dataAux);
+  EEPROM.update(6, bass);
 }
 
 void setMid() {
@@ -904,6 +949,7 @@ void setMid() {
   if(mid > 7)
     dataAux = 23 - mid;
   sendToPT2322(0b10100000 + dataAux);
+  EEPROM.update(5, mid);
 }
 
 void setTreble() {
@@ -915,6 +961,7 @@ void setTreble() {
   if(treble > 7)
     dataAux = 23 - treble;
   sendToPT2322(0b10110000 + dataAux);
+  EEPROM.update(4, treble);
 }
 
 void setSub() {
@@ -923,6 +970,7 @@ void setSub() {
   if (sub < 0)
     sub = 0;
   sendToPT2322(0b01100000 + 15 - sub);
+  EEPROM.update(7, sub);
 }
 
 void setFL() {
@@ -931,6 +979,7 @@ void setFL() {
   if (FL < 0)
     FL = 0;
   sendToPT2322(0b00010000 + 15 - FL);
+  EEPROM.update(8, FL);
 }
 
 void setFR() {
@@ -939,6 +988,7 @@ void setFR() {
   if (FR < 0)
     FR = 0;
   sendToPT2322(0b00100000 + 15 - FR);
+  EEPROM.update(9, FR);
 }
 
 void setCN() {
@@ -955,6 +1005,7 @@ void setCN() {
       break;
   }
   sendToPT2322(0b00110000 + 15 - CN);
+  EEPROM.update(10, CN);
 }
 
 void setSL() {
@@ -971,6 +1022,7 @@ void setSL() {
       break;
   }
   sendToPT2322(0b01000000 + 15 - SL);
+  EEPROM.update(11, SL);
 }
 
 void setSR() {
@@ -987,6 +1039,7 @@ void setSR() {
       break;
   }
   sendToPT2322(0b01010000 + 15 - SR);
+  EEPROM.update(12, SR);
 }
 
 void functionPT2322(int mutePT2322, int effect, int toneControl) {
