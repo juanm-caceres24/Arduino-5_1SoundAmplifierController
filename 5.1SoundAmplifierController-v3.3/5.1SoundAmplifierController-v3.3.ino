@@ -11,18 +11,30 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7); // address, E, RW, RS, D4, D5,
 #define ADR_PT2323 0b01001010 // 74
 
 // menu buttons
-#define MENU_BTN  12
-#define DOWN_BTN  8
-#define UP_BTN    4
-#define INPUT_BTN 11
-#define MUTE_BTN  7
-#define MIX_BTN   3
+#define ROTARY_ENCODER_SW_BTN  12
+#define ROTARY_ENCODER_DT_PIN  2
+#define ROTARY_ENCODER_CLK_PIN 4
+#define INPUT_BTN              11
+#define MUTE_BTN               7
+#define MIX_BTN                3
 
 // global variables
+// auxiliar variable for chips PT2322 & PT2323 send
 byte dataAux;
+
+// rotary encoder variable
+static unsigned long lastInterruptionTime;
+unsigned long interruptionTime;
+int rotaryEncoderOutput;
+
+// menu variables
 int menu;
 int menuResetCounter;
+
+// LCD variables
 int displayOnCounter;
+
+// logic variables
 int input;
 int speakerMode;
 int channelMute;
@@ -50,12 +62,15 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   
   // menu buttons
-  pinMode(MENU_BTN, INPUT);
-  pinMode(DOWN_BTN, INPUT);
-  pinMode(UP_BTN, INPUT);
+  pinMode(ROTARY_ENCODER_SW_BTN, INPUT);
+  pinMode(ROTARY_ENCODER_DT_PIN, INPUT);
+  pinMode(ROTARY_ENCODER_CLK_PIN, INPUT);
   pinMode(INPUT_BTN, INPUT);
   pinMode(MUTE_BTN, INPUT);
   pinMode(MIX_BTN, INPUT);
+
+  // encoder interruption
+  attachInterrupt(digitalPinToInterrupt(ROTARY_ENCODER_DT_PIN), rotaryEncoder, LOW);
 
   // LCD initialization
   lcd.begin(20, 4);
@@ -78,23 +93,22 @@ void setup() {
 }
 
 void loop() {
-  delay(100);
   digitalWrite(LED_BUILTIN, LOW);
 
   // KEYPAD input control
-  if (digitalRead(MENU_BTN) == HIGH) {
+  if (digitalRead(ROTARY_ENCODER_SW_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuSelection();
     menuResetCounter = 0;
     displayOnCounter = 0;
   }
-  if (digitalRead(DOWN_BTN) == HIGH) {
+  if (rotaryEncoderOutput == -1) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuDown();
     menuResetCounter = 0;
     displayOnCounter = 0;
   }
-  if (digitalRead(UP_BTN) == HIGH) {
+  if (rotaryEncoderOutput == 1) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuUp();
     menuResetCounter = 0;
@@ -115,6 +129,7 @@ void loop() {
     mixSelection();
     displayOnCounter = 0;
   }
+  rotaryEncoderOutput = 0;
   
   if (menu != 0)
     menuResetCounter++;
@@ -320,6 +335,17 @@ void loop() {
 
 // ================ LOGIC METHODS ================ //
 
+void rotaryEncoder() {
+  interruptionTime = millis();
+  if (interruptionTime - lastInterruptionTime > 5) {
+    if (digitalRead(ROTARY_ENCODER_CLK_PIN) == HIGH)
+      rotaryEncoderOutput = 1;
+    else
+      rotaryEncoderOutput = -1;
+    lastInterruptionTime = interruptionTime;
+  }
+}
+
 void manualInitialization() {
 
   // desactivate PT2322
@@ -331,6 +357,8 @@ void manualInitialization() {
   Wire.write(0b11000111);
   Wire.endTransmission();
 
+  lastInterruptionTime = 0;      // 0 - inf
+  
   menu = 0;                      // 0->volume | 1->treble | 2->mid | 3->bass | 4->sub | 5->FL | 6->FR | 7->CN | 8->SL | 9->SR
   menuResetCounter = 0;          // 0 - 50
   displayOnCounter = 0;          // 0 - 50
@@ -831,7 +859,7 @@ void menuDown() {
   }
 }
 
-// ================ COMMUNICATION METHODS ================ //
+// ================ CHIPS LOGIC & COMMUNICATION METHODS ================ //
 
 void setInput() {
   if (input > 4)
