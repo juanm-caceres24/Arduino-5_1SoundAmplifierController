@@ -12,8 +12,8 @@ LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7); // address, E, RW, RS, D4, D5,
 
 // menu buttons
 #define ROTARY_ENCODER_SW_BTN  12
-#define ROTARY_ENCODER_DT_PIN  2
-#define ROTARY_ENCODER_CLK_PIN 4
+#define ROTARY_ENCODER_DT_PIN  4
+#define ROTARY_ENCODER_CLK_PIN 2
 #define INPUT_BTN              11
 #define MUTE_BTN               7
 #define MIX_BTN                3
@@ -70,7 +70,7 @@ void setup() {
   pinMode(MIX_BTN, INPUT);
 
   // encoder interruption
-  attachInterrupt(digitalPinToInterrupt(ROTARY_ENCODER_DT_PIN), rotaryEncoder, LOW);
+  attachInterrupt(digitalPinToInterrupt(ROTARY_ENCODER_CLK_PIN), rotaryEncoder, LOW);
 
   // LCD initialization
   lcd.begin(20, 4);
@@ -101,6 +101,7 @@ void loop() {
     menuSelection();
     menuResetCounter = 0;
     displayOnCounter = 0;
+    delay(250);
   }
   if (rotaryEncoderOutput == -1) {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -118,26 +119,31 @@ void loop() {
     digitalWrite(LED_BUILTIN, HIGH);
     inputSelection();
     displayOnCounter = 0;
+    delay(250);
   }
   if (digitalRead(MUTE_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     volMute();
     displayOnCounter = 0;
+    delay(250);
   }
   if (digitalRead(MIX_BTN) == HIGH) {
     digitalWrite(LED_BUILTIN, HIGH);
     mixSelection();
     displayOnCounter = 0;
+    delay(250);
   }
   rotaryEncoderOutput = 0;
-  
+
+  // menu reset
   if (menu != 0)
     menuResetCounter++;
   if (menuResetCounter > 50) {
     menuReset();
     menuResetCounter = 0;
   }
-  
+
+  // LCD keep on / turn off
   if (displayOnCounter >= 0 && displayOnCounter < 50) {
     lcd.setBacklight(HIGH);
     displayOnCounter++;
@@ -239,7 +245,7 @@ void loop() {
     }
   }
 
-  // LCD data information
+  // LCD first line data information
   if (displayOnCounter >= 0 && displayOnCounter < 50) {
     lcd.setCursor(0, 0);
     switch (menu) {
@@ -294,7 +300,8 @@ void loop() {
         lcd.print(SR);
         break;
     }
-    
+
+    // LCD second line data information
     lcd.setCursor(0, 1);
     lcd.print("INPUT: ");
     lcd.setCursor(7, 1);
@@ -315,7 +322,8 @@ void loop() {
         lcd.print("5.1 SURROUND ");
         break;
     }
-    
+
+    // LCD third line data information
     lcd.setCursor(0, 2);
     lcd.print("MUTE: ");
     lcd.setCursor(6, 2);
@@ -323,7 +331,8 @@ void loop() {
       lcd.print("ON            ");
     else
       lcd.print("OFF           ");
-    
+
+    // LCD fourth line data information
     lcd.setCursor(0, 3);
     lcd.print("MIX: ");
     if (mix == 1)
@@ -338,7 +347,7 @@ void loop() {
 void rotaryEncoder() {
   interruptionTime = millis();
   if (interruptionTime - lastInterruptionTime > 5) {
-    if (digitalRead(ROTARY_ENCODER_CLK_PIN) == HIGH)
+    if (digitalRead(ROTARY_ENCODER_DT_PIN) == LOW)
       rotaryEncoderOutput = 1;
     else
       rotaryEncoderOutput = -1;
@@ -417,6 +426,7 @@ void manualInitialization() {
     
   speakerMode = 0;               // 0->5.1 | 1->2.1
 
+  // set the chips with the actual values
   setInput();
   setSpeakerMode();
   setMix();
