@@ -69,6 +69,12 @@ void setup() {
   pinMode(MUTE_BTN, INPUT);
   pinMode(MIX_BTN, INPUT);
 
+  // menu buttos pull-up resistors
+  pinMode(ROTARY_ENCODER_SW_BTN, INPUT_PULLUP);
+  pinMode(INPUT_BTN, INPUT_PULLUP);
+  pinMode(MUTE_BTN, INPUT_PULLUP);
+  pinMode(MIX_BTN, INPUT_PULLUP);
+
   // encoder interruption
   attachInterrupt(digitalPinToInterrupt(ROTARY_ENCODER_CLK_PIN), rotaryEncoder, LOW);
 
@@ -96,7 +102,7 @@ void loop() {
   digitalWrite(LED_BUILTIN, LOW);
 
   // KEYPAD input control
-  if (digitalRead(ROTARY_ENCODER_SW_BTN) == HIGH) {
+  if (digitalRead(ROTARY_ENCODER_SW_BTN) == LOW) {
     digitalWrite(LED_BUILTIN, HIGH);
     menuSelection();
     menuResetCounter = 0;
@@ -115,19 +121,19 @@ void loop() {
     menuResetCounter = 0;
     displayOnCounter = 0;
   }
-  if (digitalRead(INPUT_BTN) == HIGH) {
+  if (digitalRead(INPUT_BTN) == LOW) {
     digitalWrite(LED_BUILTIN, HIGH);
     inputSelection();
     displayOnCounter = 0;
     delay(250);
   }
-  if (digitalRead(MUTE_BTN) == HIGH) {
+  if (digitalRead(MUTE_BTN) == LOW) {
     digitalWrite(LED_BUILTIN, HIGH);
     volMute();
     displayOnCounter = 0;
     delay(250);
   }
-  if (digitalRead(MIX_BTN) == HIGH) {
+  if (digitalRead(MIX_BTN) == LOW) {
     digitalWrite(LED_BUILTIN, HIGH);
     mixSelection();
     displayOnCounter = 0;
