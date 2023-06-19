@@ -69,7 +69,7 @@ void setup() {
   pinMode(MUTE_BTN, INPUT);
   pinMode(MIX_BTN, INPUT);
 
-  // menu buttos pull-up resistors
+  // menu buttons pull-up resistors
   pinMode(ROTARY_ENCODER_SW_BTN, INPUT_PULLUP);
   pinMode(INPUT_BTN, INPUT_PULLUP);
   pinMode(MUTE_BTN, INPUT_PULLUP);
