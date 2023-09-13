@@ -1,1 +1,2 @@
 # Arduino-5_1SoundAmplifierController
+Arduino Nano
